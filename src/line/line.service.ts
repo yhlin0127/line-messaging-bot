@@ -53,7 +53,8 @@ export class LineService {
           await this.replyText(event.replyToken, reply);
         }
       } catch {
-        // Per-event isolation: never fail the whole webhook batch.
+        // Last-resort per-event isolation; prefer user-facing replies inside
+        // handleTextCommand so the replyToken is still spent.
         this.logger.error('LINE event handling failed');
       }
     }
@@ -62,6 +63,7 @@ export class LineService {
   /**
    * Commands: `add <text>`, `list`. Non-commands keep Phase 2 echo behavior.
    * Scope: groupId → roomId → userId (group + 1:1 locked).
+   * Returns user-facing strings on validation/DB errors (no throw).
    */
   async handleTextCommand(
     text: string,
@@ -71,21 +73,33 @@ export class LineService {
     const scopeId = this.resolveScopeId(source);
     const userId = source?.userId ?? 'unknown';
 
-    const addMatch = /^add\s+(.+)$/i.exec(trimmed);
+    const addMatch = /^add(?:\s+(.*))?$/i.exec(trimmed);
     if (addMatch) {
       if (!scopeId) {
         return 'Cannot determine chat scope.';
       }
-      const item = await this.notes.add(scopeId, addMatch[1], userId);
-      return `Added: ${item.text}`;
+      const itemText = (addMatch[1] ?? '').trim();
+      if (!itemText) {
+        return 'Usage: add <text>';
+      }
+      try {
+        const item = await this.notes.add(scopeId, itemText, userId);
+        return `Added: ${item.text}`;
+      } catch {
+        return 'Could not save notes. Try again.';
+      }
     }
 
     if (/^list$/i.test(trimmed)) {
       if (!scopeId) {
         return 'Cannot determine chat scope.';
       }
-      const items = await this.notes.list(scopeId);
-      return this.notes.formatListReply(items);
+      try {
+        const items = await this.notes.list(scopeId);
+        return this.notes.formatListReply(items);
+      } catch {
+        return 'Could not load notes. Try again.';
+      }
     }
 
     // Non-command: keep echo (Phase 2 behavior).

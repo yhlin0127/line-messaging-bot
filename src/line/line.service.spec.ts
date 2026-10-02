@@ -180,4 +180,49 @@ describe('LineService', () => {
     });
     expect(replyMessage).toHaveBeenCalledTimes(2);
   });
+
+  it('handleTextCommand whitespace-only add returns usage (no throw)', async () => {
+    const reply = await service.handleTextCommand('add    ', {
+      type: 'user',
+      userId: 'U1',
+    });
+    expect(reply).toBe('Usage: add <text>');
+    expect(notesAdd).not.toHaveBeenCalled();
+  });
+
+  it('handleEvents add DB failure replies user-facing error', async () => {
+    notesAdd.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+    await service.handleEvents({
+      events: [
+        {
+          type: 'message',
+          replyToken: 'r-add-fail',
+          source: { type: 'user', userId: 'U1' },
+          message: { type: 'text', text: 'add milk' },
+        },
+      ],
+    });
+    expect(replyMessage).toHaveBeenCalledWith({
+      replyToken: 'r-add-fail',
+      messages: [{ type: 'text', text: 'Could not save notes. Try again.' }],
+    });
+  });
+
+  it('handleEvents list DB failure replies user-facing error', async () => {
+    notesList.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+    await service.handleEvents({
+      events: [
+        {
+          type: 'message',
+          replyToken: 'r-list-fail',
+          source: { type: 'user', userId: 'U1' },
+          message: { type: 'text', text: 'list' },
+        },
+      ],
+    });
+    expect(replyMessage).toHaveBeenCalledWith({
+      replyToken: 'r-list-fail',
+      messages: [{ type: 'text', text: 'Could not load notes. Try again.' }],
+    });
+  });
 });
