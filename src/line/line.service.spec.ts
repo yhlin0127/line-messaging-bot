@@ -11,12 +11,16 @@ describe('LineService', () => {
   let replyMessage: jest.Mock;
   let notesAdd: jest.Mock;
   let notesList: jest.Mock;
+  let notesDone: jest.Mock;
+  let notesClear: jest.Mock;
   let formatListReply: jest.Mock;
 
   beforeEach(async () => {
     replyMessage = jest.fn().mockResolvedValue({});
     notesAdd = jest.fn();
     notesList = jest.fn();
+    notesDone = jest.fn();
+    notesClear = jest.fn();
     formatListReply = jest.fn();
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -37,6 +41,8 @@ describe('LineService', () => {
           useValue: {
             add: notesAdd,
             list: notesList,
+            done: notesDone,
+            clear: notesClear,
             formatListReply,
           },
         },
@@ -127,6 +133,54 @@ describe('LineService', () => {
     });
   });
 
+  it('handleEvents done command marks item and replies', async () => {
+    notesDone.mockResolvedValue({
+      id: 'i1',
+      text: 'milk',
+      done: true,
+      createdByLineUserId: 'U1',
+      createdAt: new Date(),
+    });
+
+    await service.handleEvents({
+      events: [
+        {
+          type: 'message',
+          replyToken: 'r-done',
+          source: { type: 'group', groupId: 'G1', userId: 'U1' },
+          message: { type: 'text', text: 'done 1' },
+        },
+      ],
+    });
+
+    expect(notesDone).toHaveBeenCalledWith('G1', 1);
+    expect(replyMessage).toHaveBeenCalledWith({
+      replyToken: 'r-done',
+      messages: [{ type: 'text', text: 'Done: milk' }],
+    });
+  });
+
+  it('handleEvents clear command wipes list and replies count', async () => {
+    notesClear.mockResolvedValue(2);
+
+    await service.handleEvents({
+      events: [
+        {
+          type: 'message',
+          replyToken: 'r-clear',
+          source: { type: 'user', userId: 'U1' },
+          message: { type: 'text', text: 'clear' },
+        },
+      ],
+    });
+
+    expect(notesClear).toHaveBeenCalledWith('U1');
+    expect(replyMessage).toHaveBeenCalledWith({
+      replyToken: 'r-clear',
+      messages: [{ type: 'text', text: 'Cleared 2 items.' }],
+    });
+  });
+
   it('resolveScopeId prefers groupId then roomId then userId', () => {
     expect(
       service.resolveScopeId({ groupId: 'G', roomId: 'R', userId: 'U' }),
@@ -190,6 +244,33 @@ describe('LineService', () => {
     expect(notesAdd).not.toHaveBeenCalled();
   });
 
+  it('handleTextCommand done without number returns usage', async () => {
+    const reply = await service.handleTextCommand('done', {
+      type: 'user',
+      userId: 'U1',
+    });
+    expect(reply).toBe('Usage: done <n>');
+    expect(notesDone).not.toHaveBeenCalled();
+  });
+
+  it('handleTextCommand done invalid index replies user-facing error', async () => {
+    notesDone.mockResolvedValue(null);
+    const reply = await service.handleTextCommand('done 9', {
+      type: 'user',
+      userId: 'U1',
+    });
+    expect(reply).toBe('No item at that number. Use list to see items.');
+  });
+
+  it('handleTextCommand clear empty list replies empty-state', async () => {
+    notesClear.mockResolvedValue(0);
+    const reply = await service.handleTextCommand('clear', {
+      type: 'user',
+      userId: 'U1',
+    });
+    expect(reply).toBe('List is empty.');
+  });
+
   it('handleEvents add DB failure replies user-facing error', async () => {
     notesAdd.mockRejectedValueOnce(new Error('ECONNREFUSED'));
     await service.handleEvents({
@@ -223,6 +304,42 @@ describe('LineService', () => {
     expect(replyMessage).toHaveBeenCalledWith({
       replyToken: 'r-list-fail',
       messages: [{ type: 'text', text: 'Could not load notes. Try again.' }],
+    });
+  });
+
+  it('handleEvents done DB failure replies user-facing error', async () => {
+    notesDone.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+    await service.handleEvents({
+      events: [
+        {
+          type: 'message',
+          replyToken: 'r-done-fail',
+          source: { type: 'user', userId: 'U1' },
+          message: { type: 'text', text: 'done 1' },
+        },
+      ],
+    });
+    expect(replyMessage).toHaveBeenCalledWith({
+      replyToken: 'r-done-fail',
+      messages: [{ type: 'text', text: 'Could not update notes. Try again.' }],
+    });
+  });
+
+  it('handleEvents clear DB failure replies user-facing error', async () => {
+    notesClear.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+    await service.handleEvents({
+      events: [
+        {
+          type: 'message',
+          replyToken: 'r-clear-fail',
+          source: { type: 'user', userId: 'U1' },
+          message: { type: 'text', text: 'clear' },
+        },
+      ],
+    });
+    expect(replyMessage).toHaveBeenCalledWith({
+      replyToken: 'r-clear-fail',
+      messages: [{ type: 'text', text: 'Could not clear notes. Try again.' }],
     });
   });
 });

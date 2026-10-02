@@ -15,8 +15,9 @@ Personal LINE Messaging API **shared-notes** bot (grocery / todo style lists), N
 
 - **Phase 1:** Nest scaffold, `GET /health`, config/env stubs (`local` / `SIT` / `STG` / `PROD`), thin `line/` + `notes/` modules.
 - **Phase 2:** LINE webhook signature verify (`x-line-signature` + raw body), text echo via Reply API.
-- **Phase 3 (this branch):** Postgres persist (`pg` + SQL migrations), `add` / `list` commands scoped by `groupId` / `roomId` / `userId`. Non-command text still echoes. No Prisma/Drizzle; done/clear is Phase 4.
-- **Phase 4+:** done/clear, Flex, Push, deploy — see tech design.
+- **Phase 3:** Postgres persist (`pg` + SQL migrations), `add` / `list` commands scoped by `groupId` / `roomId` / `userId`. Non-command text still echoes. No Prisma/Drizzle.
+- **Phase 4 (this branch):** `done <n>` marks item done (`items.done`); `clear` deletes all items for the scope. Fail-soft user-facing replies on usage/DB errors.
+- **Phase 5+:** Flex, Push, deploy — see tech design.
 
 ## Prerequisites
 
@@ -45,6 +46,8 @@ Health check: `GET http://localhost:3000/health` → `{ "status": "ok" }`
 |------|----------|
 | `add <text>` | Insert item on the shared list for this chat scope |
 | `list` | Show numbered items (`○` open / `✓` done) |
+| `done <n>` | Mark item N done (1-based index from `list`) |
+| `clear` | Delete all items for this chat scope |
 | other text | Echo (Phase 2 behavior kept) |
 
 Scope: LINE `groupId` → `roomId` → `userId` (group + 1:1). One shared list per scope (`kind = shared`).
