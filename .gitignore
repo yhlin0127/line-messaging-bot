@@ -14,9 +14,8 @@ coverage
 /.nyc_output
 
 # env / secrets (never commit real values)
-.env
-.env.local
-.env.*.local
+.env*
+!.env.example
 
 # IDE / OS
 .idea
