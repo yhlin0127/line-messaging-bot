@@ -83,6 +83,38 @@ describe('App (e2e)', () => {
     });
   });
 
+  it('POST /webhook valid signature but reply fails → still 200, no token in body', async () => {
+    const accessToken = 'e2e_token';
+    replyMessage.mockRejectedValueOnce(
+      new Error(`LINE API error while using ${accessToken}`),
+    );
+    const payload = {
+      destination: 'Udest',
+      events: [
+        {
+          type: 'message',
+          replyToken: 'e2e-reply-fail',
+          message: { type: 'text', text: 'boom' },
+        },
+      ],
+    };
+    const raw = JSON.stringify(payload);
+
+    const res = await request(app.getHttpServer())
+      .post('/webhook')
+      .set('Content-Type', 'application/json')
+      .set('x-line-signature', sign(raw))
+      .send(raw)
+      .expect(200)
+      .expect({ ok: true });
+
+    const bodyStr = JSON.stringify(res.body);
+    const text = res.text ?? '';
+    expect(bodyStr).not.toContain(accessToken);
+    expect(text).not.toContain(accessToken);
+    expect(replyMessage).toHaveBeenCalled();
+  });
+
   afterEach(async () => {
     await app.close();
   });

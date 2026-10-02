@@ -74,4 +74,33 @@ describe('LineService', () => {
     });
     expect(replyMessage).not.toHaveBeenCalled();
   });
+
+  it('replyEcho swallows reply failures (no throw)', async () => {
+    replyMessage.mockRejectedValueOnce(new Error('upstream 500'));
+    await expect(
+      service.replyEcho('reply-token-fail', 'hello'),
+    ).resolves.toBeUndefined();
+    expect(replyMessage).toHaveBeenCalled();
+  });
+
+  it('handleEvents continues after a reply failure (per-event try)', async () => {
+    replyMessage
+      .mockRejectedValueOnce(new Error('first fails'))
+      .mockResolvedValueOnce({});
+    await service.handleEvents({
+      events: [
+        {
+          type: 'message',
+          replyToken: 't1',
+          message: { type: 'text', text: 'one' },
+        },
+        {
+          type: 'message',
+          replyToken: 't2',
+          message: { type: 'text', text: 'two' },
+        },
+      ],
+    });
+    expect(replyMessage).toHaveBeenCalledTimes(2);
+  });
 });

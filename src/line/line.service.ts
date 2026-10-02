@@ -29,13 +29,18 @@ export class LineService {
 
   async handleEvents(body: LineWebhookBody): Promise<void> {
     for (const event of body.events ?? []) {
-      if (
-        event.type === 'message' &&
-        event.message?.type === 'text' &&
-        typeof event.message.text === 'string' &&
-        event.replyToken
-      ) {
-        await this.replyEcho(event.replyToken, event.message.text);
+      try {
+        if (
+          event.type === 'message' &&
+          event.message?.type === 'text' &&
+          typeof event.message.text === 'string' &&
+          event.replyToken
+        ) {
+          await this.replyEcho(event.replyToken, event.message.text);
+        }
+      } catch {
+        // Per-event isolation: never fail the whole webhook batch.
+        this.logger.error('LINE event handling failed');
       }
     }
   }
@@ -46,9 +51,10 @@ export class LineService {
         replyToken,
         messages: [{ type: 'text', text }],
       });
-    } catch (err) {
-      this.logger.error('LINE replyMessage failed', err);
-      throw err;
+    } catch {
+      // Signature already verified; do not surface reply failures as 5xx / retries.
+      // Fixed short log only — never pass err (SDK errors can embed channel tokens).
+      this.logger.error('LINE replyMessage failed');
     }
   }
 }
