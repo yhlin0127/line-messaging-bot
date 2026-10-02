@@ -62,7 +62,7 @@ export class PgNotesRepository implements NotesRepository {
       `SELECT id, text, done, created_by_line_user_id, created_at
        FROM items
        WHERE list_id = $1
-       ORDER BY created_at ASC`,
+       ORDER BY created_at ASC, id ASC`,
       [listId],
     );
     return result.rows.map(mapRow);
@@ -80,7 +80,7 @@ export class PgNotesRepository implements NotesRepository {
          SELECT id
          FROM items
          WHERE list_id = $1
-         ORDER BY created_at ASC
+         ORDER BY created_at ASC, id ASC
          OFFSET $2
          LIMIT 1
        )
