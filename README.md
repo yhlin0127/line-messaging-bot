@@ -2,7 +2,6 @@
 
 Personal LINE Messaging API **shared-notes** bot (grocery / todo style lists), NestJS.
 
-**Not** related to MECCA / DPT work.
 
 ## Docs (source of truth)
 
@@ -14,8 +13,9 @@ Personal LINE Messaging API **shared-notes** bot (grocery / todo style lists), N
 
 ## Phase status
 
-- **Phase 1 (this branch):** Nest scaffold, `GET /health`, config/env stubs (`local` / `SIT` / `STG` / `PROD`), thin `line/` + `notes/` modules (`POST /webhook` → 501). No ORM/DB yet.
-- **Phase 2+:** LINE webhook + signature verify, persist/DB, echo / list commands — see tech design.
+- **Phase 1:** Nest scaffold, `GET /health`, config/env stubs (`local` / `SIT` / `STG` / `PROD`), thin `line/` + `notes/` modules.
+- **Phase 2 (this branch):** LINE webhook signature verify (`x-line-signature` + raw body), text echo via Reply API. No ORM/DB yet.
+- **Phase 3+:** Persist/DB, group-scoped lists, done/clear — see tech design.
 
 ## Prerequisites
 
@@ -41,7 +41,7 @@ Health check: `GET http://localhost:3000/health` → `{ "status": "ok" }`
 | `npm run build` | Compile to `dist/` |
 | `npm run lint` | ESLint |
 | `npm test` | Unit / smoke tests |
-| `npm run test:e2e` | e2e (health + webhook stub) |
+| `npm run test:e2e` | e2e (health + webhook signature / echo) |
 
 ## Env model
 

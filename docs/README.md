@@ -7,6 +7,4 @@ Personal LINE Messaging API shared-notes bot (grocery / todo), &lt;50 users.
 | `TECH-DESIGN.md` | Stack, phases, env proposal, locked vs TBD |
 | `ARCHITECTURE.md` | Mermaid flows + Nest module map |
 
-**Not** related to DPT-6025 / MECCA (`../dpt-6025/`).
-
 Chat origin: Research Bot teach + Poteto-style plan (originally Next.js). Manager driving NestJS build — docs updated to Nest target.
