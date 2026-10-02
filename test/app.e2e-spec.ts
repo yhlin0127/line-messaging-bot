@@ -200,6 +200,73 @@ describe('App (e2e)', () => {
     expect(replyMessage).toHaveBeenCalled();
   });
 
+  it('POST /webhook notesAdd reject → 200 and user-facing reply', async () => {
+    notesAdd.mockRejectedValueOnce(new Error('ECONNREFUSED sql secret'));
+    const payload = {
+      destination: 'Udest',
+      events: [
+        {
+          type: 'message',
+          replyToken: 'e2e-add-fail',
+          source: { type: 'group', groupId: 'Ge2e', userId: 'Ue2e' },
+          message: { type: 'text', text: 'add milk' },
+        },
+      ],
+    };
+    const raw = JSON.stringify(payload);
+
+    const res = await request(app.getHttpServer())
+      .post('/webhook')
+      .set('Content-Type', 'application/json')
+      .set('x-line-signature', sign(raw))
+      .send(raw)
+      .expect(200)
+      .expect({ ok: true });
+
+    const bodyStr = JSON.stringify(res.body);
+    expect(bodyStr).not.toContain('ECONNREFUSED');
+    expect(bodyStr).not.toContain('sql secret');
+    expect(replyMessage).toHaveBeenCalledTimes(1);
+    expect(replyMessage).toHaveBeenCalledWith({
+      replyToken: 'e2e-add-fail',
+      messages: [{ type: 'text', text: 'Could not save notes. Try again.' }],
+    });
+  });
+
+  it('POST /webhook notesList reject → 200 and user-facing reply', async () => {
+    notesList.mockRejectedValueOnce(
+      new Error('relation "lists" does not exist'),
+    );
+    const payload = {
+      destination: 'Udest',
+      events: [
+        {
+          type: 'message',
+          replyToken: 'e2e-list-fail',
+          source: { type: 'user', userId: 'Ue2e' },
+          message: { type: 'text', text: 'list' },
+        },
+      ],
+    };
+    const raw = JSON.stringify(payload);
+
+    const res = await request(app.getHttpServer())
+      .post('/webhook')
+      .set('Content-Type', 'application/json')
+      .set('x-line-signature', sign(raw))
+      .send(raw)
+      .expect(200)
+      .expect({ ok: true });
+
+    const bodyStr = JSON.stringify(res.body);
+    expect(bodyStr).not.toContain('relation');
+    expect(replyMessage).toHaveBeenCalledTimes(1);
+    expect(replyMessage).toHaveBeenCalledWith({
+      replyToken: 'e2e-list-fail',
+      messages: [{ type: 'text', text: 'Could not load notes. Try again.' }],
+    });
+  });
+
   afterEach(async () => {
     await app.close();
   });
