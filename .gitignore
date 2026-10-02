@@ -1,0 +1,27 @@
+# compiled
+/dist
+/build
+*.tsbuildinfo
+
+# deps
+/node_modules
+
+# logs / coverage
+logs
+*.log
+npm-debug.log*
+coverage
+/.nyc_output
+
+# env / secrets (never commit real values)
+.env
+.env.local
+.env.*.local
+
+# IDE / OS
+.idea
+.vscode
+.DS_Store
+
+# Nest
+/.nest
