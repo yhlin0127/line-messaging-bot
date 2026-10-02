@@ -9,4 +9,5 @@ async function bootstrap() {
   const port = config.get<number>('port') ?? 3000;
   await app.listen(port);
 }
-void bootstrap();
+// eslint-disable-next-line @typescript-eslint/no-floating-promises -- Nest entrypoint
+bootstrap();
