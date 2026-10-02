@@ -13,6 +13,8 @@ describe('App (e2e)', () => {
   const replyMessage = jest.fn().mockResolvedValue({});
   const notesAdd = jest.fn();
   const notesList = jest.fn();
+  const notesDone = jest.fn();
+  const notesClear = jest.fn();
   const formatListReply = jest.fn();
 
   function sign(raw: string): string {
@@ -26,6 +28,8 @@ describe('App (e2e)', () => {
     replyMessage.mockClear();
     notesAdd.mockReset();
     notesList.mockReset();
+    notesDone.mockReset();
+    notesClear.mockReset();
     formatListReply.mockReset();
     process.env.LINE_CHANNEL_SECRET = channelSecret;
     process.env.LINE_CHANNEL_ACCESS_TOKEN = 'e2e_token';
@@ -42,6 +46,8 @@ describe('App (e2e)', () => {
       .useValue({
         add: notesAdd,
         list: notesList,
+        done: notesDone,
+        clear: notesClear,
         formatListReply,
       })
       .compile();
@@ -167,6 +173,106 @@ describe('App (e2e)', () => {
     });
   });
 
+  it('POST /webhook done command → 200 and Done reply', async () => {
+    notesDone.mockResolvedValue({
+      id: 'i1',
+      text: 'milk',
+      done: true,
+      createdByLineUserId: 'Ue2e',
+      createdAt: new Date(),
+    });
+    const payload = {
+      destination: 'Udest',
+      events: [
+        {
+          type: 'message',
+          replyToken: 'e2e-done',
+          source: { type: 'group', groupId: 'Ge2e', userId: 'Ue2e' },
+          message: { type: 'text', text: 'done 1' },
+        },
+      ],
+    };
+    const raw = JSON.stringify(payload);
+
+    await request(app.getHttpServer())
+      .post('/webhook')
+      .set('Content-Type', 'application/json')
+      .set('x-line-signature', sign(raw))
+      .send(raw)
+      .expect(200)
+      .expect({ ok: true });
+
+    expect(notesDone).toHaveBeenCalledWith('Ge2e', 1);
+    expect(replyMessage).toHaveBeenCalledWith({
+      replyToken: 'e2e-done',
+      messages: [{ type: 'text', text: 'Done: milk' }],
+    });
+  });
+
+  it('POST /webhook clear command → 200 and Cleared reply', async () => {
+    notesClear.mockResolvedValue(3);
+    const payload = {
+      destination: 'Udest',
+      events: [
+        {
+          type: 'message',
+          replyToken: 'e2e-clear',
+          source: { type: 'user', userId: 'Ue2e' },
+          message: { type: 'text', text: 'clear' },
+        },
+      ],
+    };
+    const raw = JSON.stringify(payload);
+
+    await request(app.getHttpServer())
+      .post('/webhook')
+      .set('Content-Type', 'application/json')
+      .set('x-line-signature', sign(raw))
+      .send(raw)
+      .expect(200)
+      .expect({ ok: true });
+
+    expect(notesClear).toHaveBeenCalledWith('Ue2e');
+    expect(replyMessage).toHaveBeenCalledWith({
+      replyToken: 'e2e-clear',
+      messages: [{ type: 'text', text: 'Cleared 3 items.' }],
+    });
+  });
+
+  it('POST /webhook done invalid index → 200 and user-facing reply', async () => {
+    notesDone.mockResolvedValue(null);
+    const payload = {
+      destination: 'Udest',
+      events: [
+        {
+          type: 'message',
+          replyToken: 'e2e-done-miss',
+          source: { type: 'user', userId: 'Ue2e' },
+          message: { type: 'text', text: 'done 99' },
+        },
+      ],
+    };
+    const raw = JSON.stringify(payload);
+
+    await request(app.getHttpServer())
+      .post('/webhook')
+      .set('Content-Type', 'application/json')
+      .set('x-line-signature', sign(raw))
+      .send(raw)
+      .expect(200)
+      .expect({ ok: true });
+
+    expect(replyMessage).toHaveBeenCalledWith({
+      replyToken: 'e2e-done-miss',
+      messages: [
+        {
+          type: 'text',
+          text: 'No item at that number. Use list to see items.',
+        },
+      ],
+    });
+  });
+
   it('POST /webhook valid signature but reply fails → still 200, no token in body', async () => {
     const accessToken = 'e2e_token';
     replyMessage.mockRejectedValueOnce(
@@ -264,6 +370,64 @@ describe('App (e2e)', () => {
     expect(replyMessage).toHaveBeenCalledWith({
       replyToken: 'e2e-list-fail',
       messages: [{ type: 'text', text: 'Could not load notes. Try again.' }],
+    });
+  });
+
+  it('POST /webhook notesDone reject → 200 and user-facing reply', async () => {
+    notesDone.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+    const payload = {
+      destination: 'Udest',
+      events: [
+        {
+          type: 'message',
+          replyToken: 'e2e-done-fail',
+          source: { type: 'user', userId: 'Ue2e' },
+          message: { type: 'text', text: 'done 1' },
+        },
+      ],
+    };
+    const raw = JSON.stringify(payload);
+
+    await request(app.getHttpServer())
+      .post('/webhook')
+      .set('Content-Type', 'application/json')
+      .set('x-line-signature', sign(raw))
+      .send(raw)
+      .expect(200)
+      .expect({ ok: true });
+
+    expect(replyMessage).toHaveBeenCalledWith({
+      replyToken: 'e2e-done-fail',
+      messages: [{ type: 'text', text: 'Could not update notes. Try again.' }],
+    });
+  });
+
+  it('POST /webhook notesClear reject → 200 and user-facing reply', async () => {
+    notesClear.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+    const payload = {
+      destination: 'Udest',
+      events: [
+        {
+          type: 'message',
+          replyToken: 'e2e-clear-fail',
+          source: { type: 'user', userId: 'Ue2e' },
+          message: { type: 'text', text: 'clear' },
+        },
+      ],
+    };
+    const raw = JSON.stringify(payload);
+
+    await request(app.getHttpServer())
+      .post('/webhook')
+      .set('Content-Type', 'application/json')
+      .set('x-line-signature', sign(raw))
+      .send(raw)
+      .expect(200)
+      .expect({ ok: true });
+
+    expect(replyMessage).toHaveBeenCalledWith({
+      replyToken: 'e2e-clear-fail',
+      messages: [{ type: 'text', text: 'Could not clear notes. Try again.' }],
     });
   });
 

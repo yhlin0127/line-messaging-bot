@@ -7,18 +7,28 @@ describe('NotesService', () => {
   const ensureSharedList = jest.fn();
   const addItem = jest.fn();
   const listItems = jest.fn();
+  const markItemDone = jest.fn();
+  const clearItems = jest.fn();
 
   beforeEach(async () => {
     ensureSharedList.mockReset();
     addItem.mockReset();
     listItems.mockReset();
+    markItemDone.mockReset();
+    clearItems.mockReset();
     ensureSharedList.mockResolvedValue('list-1');
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         NotesService,
         {
           provide: NOTES_REPOSITORY,
-          useValue: { ensureSharedList, addItem, listItems },
+          useValue: {
+            ensureSharedList,
+            addItem,
+            listItems,
+            markItemDone,
+            clearItems,
+          },
         },
       ],
     }).compile();
@@ -63,6 +73,35 @@ describe('NotesService', () => {
     expect(ensureSharedList).toHaveBeenCalledWith('G123');
     expect(listItems).toHaveBeenCalledWith('list-1');
     expect(items).toHaveLength(1);
+  });
+
+  it('done marks item by 1-based index', async () => {
+    const item: NoteItem = {
+      id: 'i2',
+      text: 'bread',
+      done: true,
+      createdByLineUserId: 'U1',
+      createdAt: new Date(),
+    };
+    markItemDone.mockResolvedValue(item);
+
+    const result = await service.done('G123', 2);
+
+    expect(ensureSharedList).toHaveBeenCalledWith('G123');
+    expect(markItemDone).toHaveBeenCalledWith('list-1', 2);
+    expect(result).toEqual(item);
+  });
+
+  it('done returns null when index missing', async () => {
+    markItemDone.mockResolvedValue(null);
+    await expect(service.done('G123', 99)).resolves.toBeNull();
+  });
+
+  it('clear deletes all items and returns count', async () => {
+    clearItems.mockResolvedValue(3);
+    await expect(service.clear('G123')).resolves.toBe(3);
+    expect(ensureSharedList).toHaveBeenCalledWith('G123');
+    expect(clearItems).toHaveBeenCalledWith('list-1');
   });
 
   it('formatListReply shows empty hint or numbered lines', () => {

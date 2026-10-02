@@ -61,7 +61,8 @@ export class LineService {
   }
 
   /**
-   * Commands: `add <text>`, `list`. Non-commands keep Phase 2 echo behavior.
+   * Commands: `add <text>`, `list`, `done <n>`, `clear`.
+   * Non-commands keep Phase 2 echo behavior.
    * Scope: groupId → roomId → userId (group + 1:1 locked).
    * Returns user-facing strings on validation/DB errors (no throw).
    */
@@ -99,6 +100,45 @@ export class LineService {
         return this.notes.formatListReply(items);
       } catch {
         return 'Could not load notes. Try again.';
+      }
+    }
+
+    const doneMatch = /^done(?:\s+(.*))?$/i.exec(trimmed);
+    if (doneMatch) {
+      if (!scopeId) {
+        return 'Cannot determine chat scope.';
+      }
+      const rawIndex = (doneMatch[1] ?? '').trim();
+      if (!rawIndex || !/^\d+$/.test(rawIndex)) {
+        return 'Usage: done <n>';
+      }
+      const index = Number.parseInt(rawIndex, 10);
+      if (index < 1) {
+        return 'Usage: done <n>';
+      }
+      try {
+        const item = await this.notes.done(scopeId, index);
+        if (!item) {
+          return 'No item at that number. Use list to see items.';
+        }
+        return `Done: ${item.text}`;
+      } catch {
+        return 'Could not update notes. Try again.';
+      }
+    }
+
+    if (/^clear$/i.test(trimmed)) {
+      if (!scopeId) {
+        return 'Cannot determine chat scope.';
+      }
+      try {
+        const count = await this.notes.clear(scopeId);
+        if (count === 0) {
+          return 'List is empty.';
+        }
+        return `Cleared ${count} item${count === 1 ? '' : 's'}.`;
+      } catch {
+        return 'Could not clear notes. Try again.';
       }
     }
 

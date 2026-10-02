@@ -14,6 +14,10 @@ export type NotesRepository = {
     createdByLineUserId: string,
   ): Promise<NoteItem>;
   listItems(listId: string): Promise<NoteItem[]>;
+  /** 1-based index matching `list` display order; null if out of range. */
+  markItemDone(listId: string, index1Based: number): Promise<NoteItem | null>;
+  /** Deletes all items for the list; returns deleted row count. */
+  clearItems(listId: string): Promise<number>;
 };
 
 export const NOTES_REPOSITORY = 'NOTES_REPOSITORY';
