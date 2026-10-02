@@ -26,7 +26,7 @@ export class LineController {
   /**
    * LINE Messaging API webhook.
    * Verifies `x-line-signature` against the raw body (fail closed), then
-   * echoes text messages via Reply API. Always returns 200 after handling
+   * handles add/list commands (else echo) via Reply API. Always returns 200 after handling
    * a valid request so LINE does not retry unnecessarily.
    */
   @Post()
