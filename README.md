@@ -2,7 +2,6 @@
 
 Personal LINE Messaging API **shared-notes** bot (grocery / todo style lists), NestJS.
 
-**Not** related to MECCA / DPT work.
 
 ## Docs (source of truth)
 

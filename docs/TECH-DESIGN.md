@@ -1,6 +1,6 @@
 # LINE shared-notes bot — tech design
 
-Personal project (not MECCA). Goal: &lt;50 users; shared grocery / todo notes via LINE Messaging API.
+Personal project. Goal: &lt;50 users; shared grocery / todo notes via LINE Messaging API.
 
 **Status of stack choice:** Research Bot’s first Poteto-style plan recommended **Next.js Route Handlers** (smallest host). YuanHung / Manager are driving a **NestJS** build instead. This doc treats NestJS as the implementation target and keeps the same product scope.
 
@@ -63,7 +63,7 @@ One Nest deploy per env; never share channel tokens across envs.
 - LINE Messaging API bot.
 - Shared notes for grocery / todo style daily lists.
 - &lt;50 users.
-- Personal repo (not MECCA).
+- Personal repo (YuanHung shared-notes bot).
 - Architecture diagrams were Mermaid in chat (now saved under this folder).
 
 ## Explicitly not locked

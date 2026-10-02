@@ -85,4 +85,4 @@ flowchart LR
 - Secrets stay server-side only.
 - Return HTTP 200 to LINE quickly; do heavy work before reply or queue later.
 - Prefer **Reply** with `replyToken` for command responses; **Push** only for reminders.
-- Do not put `GameState` / MECCA patterns here — personal bot only.
+- Keep scope to personal shared-notes (grocery / todo); no unrelated domain patterns.
